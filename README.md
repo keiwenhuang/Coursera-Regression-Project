@@ -1,1 +1,2 @@
 # Coursera-Regression-Project
+In this project, we will work on the build-in dataset, mtcars. We will be using model selection and linear regression to estimate the relationship between the transmission variable(*am*) and other independent variables, such as Weight(*wt*), Number of cylinders(*cyl*), Gross horsepower(*hp*), to figure out how the transmission will impact on *MPG*.  

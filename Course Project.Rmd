@@ -1,0 +1,153 @@
+---
+title: "Regression Models Course Project"
+author: "Kevin Huang"
+date: "November 5, 2017"
+output: pdf_document
+---
+# Executive Summary
+In this project, we use model selection and linear regression to estimate the relationship between the transmission variable(*am*) and other independent variables, such as Weight(*wt*), Number of cylinders(*cyl*), Gross horsepower(*hp*), to figure out how the transmission will impact on *MPG*.  
+
+We have concluded the following:  
+1. *Manual* transmission has better *MPG* compare to *Automatic* transmission when we only use transmission along in the model. However, when we add in other variables, transmission has lower effect in terms of *MPG*.  
+2. *MPG* will increase by 1.8 when the car is *manual* tranmission.
+
+# Instrutions
+You work for Motor Trend, a magazine about the automobile industry. Looking at a data set of a collection of cars, they are interested in exploring the relationship between a set of variables and miles per gallon (MPG) (outcome).  
+They are particularly interested in the following two questions:  
+1. "Is an automatic or manual transmission better for MPG"  
+2. "Quantify the MPG difference between automatic and manual transmissions"
+
+# Data Description
+The data set *mtcars* contains a data frame with 32 observations on 11 variables.
+
+[, 1]	 mpg	 Miles/(US) gallon  
+[, 2]	 cyl	 Number of cylinders  
+[, 3]	 disp	 Displacement (cu.in.)  
+[, 4]	 hp	 Gross horsepower  
+[, 5]	 drat	 Rear axle ratio  
+[, 6]	 wt	 Weight (1000 lbs)  
+[, 7]	 qsec	 1/4 mile time  
+[, 8]	 vs	 V/S  
+[, 9]	 am	 Transmission (0 = automatic, 1 = manual)  
+[,10]	 gear	 Number of forward gears  
+[,11]	 carb	 Number of carburetors  
+
+# Data Processing, Transformation, and Exploratory data analysis
+We load the data into R, and convert some of the variables to factors.
+
+```{r}
+data(mtcars)
+df <- mtcars
+names(df)
+dim(df)
+head(df)
+str(df)
+df$cyl <- as.factor(df$cyl)
+df$vs <- as.factor(df$vs)
+df$am <- as.factor(df$am)
+df$gear <- as.factor(df$gear)
+df$carb <- as.factor(df$carb)
+summary(df)
+```
+
+# Inference
+Before we do the model selection, we perform a t-test to test if there is significant difference in mean *mpg* between *automatic* and *manaual* transmission.
+
+```{r}
+result <- t.test(mpg ~ am, df)
+```
+
+The result of the t-test shows the p-value is `r round(result$p.v, 3)`; therefore, it is significantly different in the mean of *automatic* and *manual.* The mean *mpg* for *automatic* transmission is `r round(result$est[1], 3)`, and the mean *mpg* for *manual* transmission is `r round(result$est[2], 3)`.
+
+We can also see the boxplot in appendix 1 comparing the means *mpg* for *manual* and *automatic* transmission.
+
+# Regression Analysis and Model Selection
+### Simple Linear Regression
+
+First off, we fit a initial model which *MPG* as outcome and *am* as the only predictor
+```{r}
+iniModel <- lm(mpg ~ am, df)
+summary(iniModel)
+```
+
+The p-value is almost 0, whcih tells us the variable *am* is significant. However, the R-squares is `r round(summary(iniModel)$r.sq, 2)`, which means only `r round(summary(iniModel)$r.sq, 2) * 100`% of the variance is explianed by this model. Therefore, we will have to fit other models that includes significant variables to explian the variance.
+
+### Model Selection
+By looking at pairs plot (appendix 2) and the correlations between *MPG* and variables (appendix 3), I choose *cyl*, *disp*, *hp*, *wt* along with *am* to fit more models because they are highly correlated to *MPG.* I will be using nested model testing to find the significant variables.
+
+```{r}
+fit1 <- lm(mpg ~ am + wt, df)
+fit2 <- lm(mpg ~ am + wt + cyl, df)
+fit3 <- lm(mpg ~ am + wt + cyl + disp, df)
+fit4 <- lm(mpg ~ am + wt + cyl + disp + hp, df)
+anova.test.1 <- anova(iniModel,fit1, fit2, fit3, fit4)
+
+fit4_rm_disp <- lm(mpg ~ am + wt + cyl + hp, df)
+anova.test.2 <- anova(iniModel,fit1, fit2, fit4_rm_disp)
+
+bestModel <- lm(mpg ~ am + wt + cyl + hp, df)
+```
+I put *am* as first predictors and followed by the order of correlation to *MPG*. Then I run the anova analysis (appendix 4). From model 3 and model 4, we can see that by adding *disp* does not have much impact to the model, but model 5 is significant, meaning adding *hp* is significant. Therefore, I remove disp and run anova again (appendix 5).
+
+The anova analysis suggests that the 4th model, removed disp, is significant. We have the best model, *mpg ~ am + wt + cyl + hp*. 
+
+### Multiple Linear Regression
+```{r}
+best <- summary(bestModel)
+best
+```
+The p-values are small, the R-square is `r round(best$r.s, 3)`, the coefficient for *am* is `r round(best$coe[2], 2)` which suggests that driving *manual* transmission car will increase *mpg* by `r round(best$coe[2], 2)` than *automatic*.
+
+# Residual and Diagnostics
+We will use the residual plot to diagnosis if there is any outlier that affect the model.
+```{r}
+par(mfrow = c(2,2))
+plot(bestModel)
+```
+
+From the above plot, we have a few observations,  
+1. The *Residuals vs Fitted* plot does not appear a linear relationship.  
+2. The *QQ plot* appears a little bit of tail, but it is normal overall. Therefore, it suggests that the residuals are normally distributed. 
+3. The *Scale Location* plot appears a horizontal line, again, it suggests the residuals are spread equally along the ranges of predictors, meaning homoscedasticity.  
+4. The *Residual vs Leverage* plot appears there is no influtial case in the model.
+
+# Conclusion
+1. After the model selection, our best model is *lm(mpg ~ am + wt + cyl + hp, df)*.
+2. After performing the residuals analysis, we can be sure our model is correct since the residuals are normally distributed, and there is no influtial case in the model.
+3. *MPG* will increase 1.8 when choosing *manual* transmission over *automatic*.
+
+# Appendix
+### Appendix 1
+```{r, fig.height=3}
+library(ggplot2)
+ggplot(df, aes(x = am, y = mpg, group = am)) + 
+    geom_boxplot(aes(fill = am)) + 
+    ggtitle("Automatic v.s Manual Transmission") +
+    xlab("Transmission Type, 0 = Automatic, 1 = Manual") + ylab("MPG") +
+    theme(plot.title = element_text(hjust = 0.5)) +
+    scale_fill_discrete(name="Transmission Type", 
+                        breaks=c("0", "1"), 
+                        labels=c("Automatic", "Manual"))
+```
+
+### Appendix 2
+```{r}
+pairs(df)
+```
+
+
+### Appendix 3
+```{r}
+suppressPackageStartupMessages(library(Hmisc))
+cor <- rcorr(as.matrix(df))
+cor$r[1,]
+```
+
+### Appendix 4
+```{r}
+anova.test.1
+```
+### Appendix 5
+```{r}
+anova.test.2
+```
